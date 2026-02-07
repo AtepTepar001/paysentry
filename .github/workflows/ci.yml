@@ -25,9 +25,22 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build (dependency-ordered)
+      - name: Build core
+        run: npm run build -w packages/core
+
+      - name: Debug - Check core dist output
         run: |
-          npm run build -w packages/core
+          echo "=== core dist files ==="
+          ls -la packages/core/dist/ || echo "NO DIST DIR"
+          echo "=== node_modules symlink ==="
+          ls -la node_modules/@paysentry/core || echo "NO SYMLINK"
+          echo "=== node_modules/@paysentry/core/dist ==="
+          ls -la node_modules/@paysentry/core/dist/ || echo "NO DIST VIA SYMLINK"
+          echo "=== tsc version ==="
+          npx tsc --version
+
+      - name: Build remaining packages
+        run: |
           npm run build -w packages/control -w packages/observe -w packages/protect -w packages/sandbox
           npm run build -w packages/x402 -w packages/demo
 
