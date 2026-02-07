@@ -4,7 +4,8 @@
   "private": true,
   "description": "The missing control plane for AI agent payments",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "examples/mcp-payment-server"
   ],
   "scripts": {
     "build": "npm run build --workspaces",

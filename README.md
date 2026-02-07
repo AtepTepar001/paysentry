@@ -1,57 +1,113 @@
 # PaySentry
 
-**The missing control plane for AI agent payments.**
+**Payment control plane for AI agents** — spending limits, circuit breakers, and audit trails for x402, MCP, and autonomous agent payments.
 
-[![Build](https://img.shields.io/github/actions/workflow/status/paysentry/paysentry/ci.yml?branch=main)](https://github.com/paysentry/paysentry/actions)
-[![Test](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/paysentry/paysentry/actions)
+[![npm](https://img.shields.io/npm/v/@paysentry/core?label=%40paysentry%2Fcore)](https://www.npmjs.com/package/@paysentry/core)
+[![npm](https://img.shields.io/npm/v/@paysentry/x402?label=%40paysentry%2Fx402)](https://www.npmjs.com/package/@paysentry/x402)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![npm](https://img.shields.io/npm/v/@paysentry/core)](https://www.npmjs.com/package/@paysentry/core)
+[![Build](https://img.shields.io/github/actions/workflow/status/mkmkkkkk/paysentry/ci.yml?branch=main)](https://github.com/mkmkkkkk/paysentry/actions)
 
-AI agents are spending real money — API calls, compute, data purchases, subscriptions. PaySentry gives you observability, policy enforcement, dispute resolution, and a testing sandbox for every payment your agents make.
+> Your agent just authorized $500 to an API endpoint. Was that intentional?
 
+---
+
+## The Problem
+
+AI agents are spending real money with zero governance:
+
+- **x402 settlement failures drain wallets silently** — facilitator takes payment, service returns 500 ([coinbase/x402#1062](https://github.com/coinbase/x402/issues/1062))
+- **No spending limits** — one prompt injection = unlimited spend
+- **No audit trail** — "which agent spent $2,400 last Tuesday?"
+- **Retry storms cause duplicate payments** — failed settlements trigger retries with no dedup ([coinbase/x402#808](https://github.com/coinbase/x402/issues/808))
+- **No circuit breakers** — one flaky facilitator cascades into system-wide failures ([coinbase/x402#803](https://github.com/coinbase/x402/issues/803))
+
+PaySentry is the missing layer between your agents and their wallets.
+
+---
+
+## Quick Start
+
+```bash
+npm install @paysentry/core @paysentry/control @paysentry/observe
 ```
-npm install @paysentry/core @paysentry/observe @paysentry/control @paysentry/protect @paysentry/sandbox
+
+### Add spending limits in 5 lines
+
+```typescript
+import { PolicyEngine, blockAbove, requireApprovalAbove, allowAll } from '@paysentry/control';
+
+const engine = new PolicyEngine();
+
+engine.loadPolicy({
+  id: 'production' as PolicyId,
+  name: 'Production Controls',
+  enabled: true,
+  rules: [
+    blockAbove(1000, 'USDC'),           // Hard block above $1000
+    requireApprovalAbove(100, 'USDC'),  // Human approval above $100
+    allowAll(),                         // Allow everything else
+  ],
+  budgets: [
+    { window: 'daily', maxAmount: 500, currency: 'USDC' },
+    { window: 'monthly', maxAmount: 5000, currency: 'USDC' },
+  ],
+});
+
+const result = engine.evaluate(transaction);
+// result.action: 'allow' | 'deny' | 'require_approval' | 'flag'
+```
+
+### x402 adapter — 3 lines to protect your x402 server
+
+```bash
+npm install @paysentry/x402
+```
+
+```typescript
+import { PaySentryX402Adapter } from '@paysentry/x402';
+import { PolicyEngine } from '@paysentry/control';
+import { SpendTracker } from '@paysentry/observe';
+
+const adapter = new PaySentryX402Adapter(
+  { policyEngine: new PolicyEngine(), spendTracker: new SpendTracker() },
+  { circuitBreaker: { failureThreshold: 5, recoveryTimeoutMs: 30_000 } },
+);
+
+// Registers all 6 lifecycle hooks: onBeforeVerify, onAfterVerify,
+// onVerifyFailure, onBeforeSettle, onAfterSettle, onSettleFailure
+adapter.withLifecycleHooks(yourX402Server);
 ```
 
 ---
 
-## Architecture
+## What PaySentry Does
 
-```
-                         ┌─────────────────────────────────────────────┐
-                         │              PaySentry                      │
-                         │         Agent Payment Control Plane         │
-                         └─────────────────────────────────────────────┘
-                                            │
-              ┌─────────────┬───────────────┼───────────────┬──────────────┐
-              │             │               │               │              │
-        ┌─────────┐  ┌───────────┐  ┌──────────────┐  ┌─────────┐  ┌──────────┐
-        │ OBSERVE │  │  CONTROL  │  │   PROTECT    │  │  TEST   │  │   CORE   │
-        │         │  │           │  │              │  │         │  │          │
-        │ Tracker │  │  Policy   │  │ Provenance   │  │ MockX402│  │  Types   │
-        │Analytics│  │  Engine   │  │ Disputes     │  │ MockACP │  │  Utils   │
-        │ Alerts  │  │  Rules    │  │ Recovery     │  │ MockAP2 │  │  Factory │
-        │         │  │Middleware │  │              │  │Scenarios│  │          │
-        └─────────┘  └───────────┘  └──────────────┘  └─────────┘  └──────────┘
-              │             │               │               │
-              └─────────────┴───────────────┴───────────────┘
-                                    │
-              ┌─────────────────────┼─────────────────────┐
-              │                     │                     │
-         ┌─────────┐          ┌─────────┐          ┌─────────┐
-         │  x402   │          │   ACP   │          │   AP2   │
-         │HTTP 402 │          │ Stripe/ │          │Agent-to-│
-         │Protocol │          │Commerce │          │ Agent   │
-         └─────────┘          └─────────┘          └─────────┘
-```
+| Problem | Solution | Package |
+|---------|----------|---------|
+| Agents spend without limits | Declarative spending policies, budget caps, approval chains | `@paysentry/control` |
+| No visibility into agent spend | Real-time transaction tracking, analytics, anomaly detection | `@paysentry/observe` |
+| x402 settlement failures lose money | Circuit breakers + retry classification per facilitator | `@paysentry/x402` |
+| No audit trail for compliance | Immutable provenance chain: intent -> policy -> execution -> settlement | `@paysentry/protect` |
+| Can't test without real money | Mock x402, ACP, and AP2 endpoints with pre-built failure scenarios | `@paysentry/sandbox` |
 
 ---
 
-## The 4 Pillars
+## Packages
 
-### 1. Observe — Know what your agents spend
+| Package | Version | Description |
+|---------|---------|-------------|
+| [`@paysentry/core`](packages/core) | [![npm](https://img.shields.io/npm/v/@paysentry/core)](https://www.npmjs.com/package/@paysentry/core) | Core types, utilities, and shared infrastructure |
+| [`@paysentry/observe`](packages/observe) | [![npm](https://img.shields.io/npm/v/@paysentry/observe)](https://www.npmjs.com/package/@paysentry/observe) | Payment tracking, analytics, budget alerts, anomaly detection |
+| [`@paysentry/control`](packages/control) | [![npm](https://img.shields.io/npm/v/@paysentry/control)](https://www.npmjs.com/package/@paysentry/control) | Policy engine — rules, budgets, approval chains, middleware |
+| [`@paysentry/protect`](packages/protect) | [![npm](https://img.shields.io/npm/v/@paysentry/protect)](https://www.npmjs.com/package/@paysentry/protect) | Dispute resolution — provenance, disputes, automated recovery |
+| [`@paysentry/sandbox`](packages/sandbox) | [![npm](https://img.shields.io/npm/v/@paysentry/sandbox)](https://www.npmjs.com/package/@paysentry/sandbox) | Mock payment environment — x402, ACP, AP2 with 9 test scenarios |
+| [`@paysentry/x402`](packages/x402) | [![npm](https://img.shields.io/npm/v/@paysentry/x402)](https://www.npmjs.com/package/@paysentry/x402) | x402 protocol adapter — lifecycle hooks, circuit breakers |
 
-Track every transaction, break down spend by agent/service/protocol/time, and get alerts when something looks off.
+---
+
+## Examples
+
+### Real-time spend tracking with alerts
 
 ```typescript
 import { SpendTracker, SpendAnalytics, SpendAlerts } from '@paysentry/observe';
@@ -93,55 +149,11 @@ const tx = createTransaction({
 tx.status = 'completed';
 tracker.record(tx);
 
-// Get analytics
 const report = analytics.getAgentAnalytics('research-bot' as AgentId);
-console.log(report.spendByCurrency);   // Map { 'USDC' => { totalAmount: 0.05, ... } }
-console.log(report.topRecipients);     // [{ recipient: 'api.openai.com', totalAmount: 0.05, count: 1 }]
+// report.spendByCurrency, report.topRecipients, report.anomalies
 ```
 
-**Features:**
-- Per-agent, per-service, per-protocol spend tracking
-- Time-series analytics (hourly/daily/weekly/monthly)
-- Anomaly detection (z-score based)
-- Rate spike detection
-- New recipient alerts
-- Budget threshold alerts
-
----
-
-### 2. Control — Set the rules, enforce them
-
-Declarative policy engine. Budget caps, rate limits, allow/deny lists, approval chains. No LLM can override these rules.
-
-```typescript
-import { PolicyEngine, blockAbove, requireApprovalAbove, allowAll } from '@paysentry/control';
-import type { PolicyId } from '@paysentry/core';
-
-const engine = new PolicyEngine();
-
-engine.loadPolicy({
-  id: 'production' as PolicyId,
-  name: 'Production Controls',
-  enabled: true,
-  rules: [
-    blockAbove(1000, 'USDC'),              // Hard block above $1000
-    requireApprovalAbove(100, 'USDC'),     // Human approval above $100
-    allowAll(),                            // Allow everything else
-  ],
-  budgets: [
-    { window: 'daily', maxAmount: 500, currency: 'USDC' },
-    { window: 'monthly', maxAmount: 5000, currency: 'USDC' },
-  ],
-  cooldownMs: 1000,
-});
-
-const result = engine.evaluate(transaction);
-// result.allowed: boolean
-// result.action: 'allow' | 'deny' | 'require_approval' | 'flag'
-// result.reason: 'Rule "Block transactions above 1000 USDC" matched: action=deny'
-```
-
-**Express/Fastify middleware:**
+### Express/Fastify middleware
 
 ```typescript
 import { createPolicyMiddleware } from '@paysentry/control';
@@ -149,175 +161,86 @@ import { createPolicyMiddleware } from '@paysentry/control';
 app.use('/pay', createPolicyMiddleware({
   engine,
   approvalHandler: async (tx) => {
-    const approved = await slack.requestApproval(tx);
-    return approved;
+    return await slack.requestApproval(tx);
   },
 }));
 ```
 
-**Features:**
-- Declarative JSON/code policy definitions
-- Per-agent, per-service, per-protocol granularity
-- Time-based budgets (hourly/daily/weekly/monthly)
-- Cooldown enforcement
-- Approval chains (auto-approve < $X, require approval > $Y, block > $Z)
-- Allow/deny lists with glob pattern matching
-- HTTP middleware for any framework
-
----
-
-### 3. Protect — Resolve disputes, recover funds
-
-Full audit trail from intent to settlement. When things go wrong, you have the evidence to file disputes and automate recovery.
+### Payment sandbox for testing
 
 ```typescript
-import { TransactionProvenance, DisputeManager, RecoveryEngine } from '@paysentry/protect';
+import { MockX402, MockACP, ALL_SCENARIOS } from '@paysentry/sandbox';
 
-const provenance = new TransactionProvenance();
-const disputes = new DisputeManager({ provenance });
-
-// Provenance records every step automatically
-provenance.recordIntent(tx, { originalPrompt: 'Buy market data' });
-provenance.recordPolicyCheck(tx.id, 'pass', { policyId: 'production' });
-provenance.recordExecution(tx.id, 'pass', { txHash: '0xabc...' });
-provenance.recordSettlement(tx.id, 'fail', { error: 'Service returned 500' });
-
-// File a dispute — provenance is automatically attached as evidence
-const dispute = disputes.file({
-  transactionId: tx.id,
-  agentId: tx.agentId,
-  reason: 'Service failed to deliver after payment',
-  requestedAmount: tx.amount,
-});
-
-// Resolve and recover
-disputes.resolve(dispute.id, {
-  status: 'resolved_refunded',
-  liability: 'service_provider',
-  resolvedAmount: tx.amount,
-});
-
-const recovery = new RecoveryEngine({
-  disputes,
-  executor: async (action) => {
-    const result = await protocol.refund(action.transactionId, action.amount);
-    return { success: result.ok, refundTxId: result.id };
-  },
-});
-
-recovery.initiate(dispute.id);
-await recovery.processQueue();
-```
-
-**Features:**
-- Immutable provenance chain (intent -> policy -> approval -> execution -> settlement)
-- Dispute lifecycle management (open -> investigating -> resolved)
-- Liability attribution (agent / service_provider / protocol / user)
-- Automated refund/chargeback flows with retry logic
-- Evidence collection and attachment
-- Status change webhooks
-
----
-
-### 4. Test — Mock every protocol
-
-Payment sandbox with mock x402, ACP, and AP2 endpoints. Test your agent payment logic without spending real money.
-
-```typescript
-import { MockX402, MockACP, MockAP2, ALL_SCENARIOS } from '@paysentry/sandbox';
-
-// Mock x402 (HTTP 402 Payment Required)
 const x402 = new MockX402({ latencyMs: 10, failureRate: 0.1 });
 const result = await x402.processPayment(transaction);
 
-// Mock ACP (Agent Commerce Protocol / Stripe-like)
-const acp = new MockACP({ declinedMerchants: ['merchant:blocked'] });
-acp.addPaymentMethod({ id: 'pm_1', type: 'wallet', active: true, balance: 1000 });
-
-// Mock AP2 (Agent-to-Agent with mandates)
-const ap2 = new MockAP2();
-ap2.createMandate({
-  grantor: 'agent-1' as AgentId,
-  grantee: 'agent-2' as AgentId,
-  maxPerTransaction: 10,
-  maxCumulative: 100,
-  currency: 'USDC',
-  expiresAt: new Date(Date.now() + 86400000).toISOString(),
-});
-
-// Pre-built test scenarios
+// 9 pre-built scenarios: overspend, timeout, dispute, multi-protocol, etc.
 console.log(ALL_SCENARIOS.map(s => s.name));
-// ['Basic Payment', 'Budget Overspend', 'Approval Required',
-//  'Blocked Recipient', 'Multi-Protocol', 'Dispute Flow',
-//  'Rate Spike', 'Timeout', 'Multi-Agent']
 ```
 
-**Features:**
-- Mock x402 facilitator with configurable latency/failure rate
-- Mock ACP endpoint with payment methods and declined merchant lists
-- Mock AP2 mandate issuer with cumulative spend tracking
-- 9 pre-built test scenarios (overspend, timeout, dispute, multi-protocol, etc.)
-- Full control over simulated behavior
+See [`examples/`](examples/) for complete runnable demos.
 
 ---
 
-## Packages
+## Architecture
 
-| Package | Description |
-|---------|-------------|
-| [`@paysentry/core`](packages/core) | Core types, utilities, and shared infrastructure |
-| [`@paysentry/observe`](packages/observe) | Payment observability — tracking, analytics, alerts |
-| [`@paysentry/control`](packages/control) | Policy engine — rules, budgets, middleware |
-| [`@paysentry/protect`](packages/protect) | Dispute resolution — provenance, disputes, recovery |
-| [`@paysentry/sandbox`](packages/sandbox) | Payment testing — mock protocols, test scenarios |
+```
+                    ┌─────────────────────────────────┐
+                    │         Your AI Agent            │
+                    └───────────────┬─────────────────┘
+                                    │
+                    ┌───────────────v─────────────────┐
+                    │     PaySentry Control Plane      │
+                    │                                  │
+                    │  OBSERVE   CONTROL   PROTECT     │
+                    │  tracking  policies  provenance  │
+                    │  alerts    budgets   disputes    │
+                    │  analytics approval  recovery    │
+                    └───────┬───────┬───────┬─────────┘
+                            │       │       │
+                    ┌───────v──┐ ┌──v────┐ ┌v────────┐
+                    │   x402   │ │  ACP  │ │   AP2   │
+                    │ HTTP 402 │ │Stripe/│ │Agent-to-│
+                    │ Protocol │ │Commrc │ │ Agent   │
+                    └──────────┘ └───────┘ └─────────┘
+```
 
 ---
 
-## Quick Start
+## Roadmap
 
-```bash
-# Install
-npm install @paysentry/core @paysentry/observe @paysentry/control
-
-# Or install everything
-npm install @paysentry/core @paysentry/observe @paysentry/control @paysentry/protect @paysentry/sandbox
-```
-
-See [`examples/quickstart.ts`](examples/quickstart.ts) for a complete demo showing all 4 pillars working together.
+- [x] Core spending policies and budget enforcement
+- [x] Real-time spend tracking and anomaly detection
+- [x] Dispute resolution and automated recovery
+- [x] Multi-protocol payment sandbox (x402, ACP, AP2)
+- [x] x402 protocol adapter with circuit breakers
+- [ ] MCP payment server (reference implementation)
+- [ ] Dashboard UI for spend visualization
+- [ ] AP2 / Visa TAP protocol adapters
 
 ---
 
 ## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Build all packages
-npm run build
-
-# Type check
-npm run typecheck
-
-# Run tests
-npm test
-
-# Lint
-npm run lint
+npm install          # Install dependencies
+npm run build        # Build all packages
+npm run typecheck    # Type check
+npm test             # Run tests
+npm run lint         # Lint
 ```
 
 ---
 
-## Why PaySentry?
+## Contributing
 
-AI agents are increasingly autonomous — they browse the web, call APIs, purchase compute, and transact with other agents. But today, there is no standard way to:
+Contributions welcome. Open an issue first for major changes.
 
-- **See** what your agents are spending (Observe)
-- **Limit** what they can spend (Control)
-- **Recover** when a payment goes wrong (Protect)
-- **Test** payment logic without real money (Test)
-
-PaySentry fills this gap. It works with any payment protocol (x402, ACP, AP2, Stripe) and any agent framework. Drop it into your stack and get full control over agent payments from day one.
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feat/my-feature`)
+3. Write tests for new functionality
+4. Ensure `npm test` and `npm run typecheck` pass
+5. Open a PR against `main`
 
 ---
 
