@@ -9,6 +9,6 @@
     { "path": "../core" },
     { "path": "../control" },
     { "path": "../observe" },
-    { "path": "../protect" }
+    { "path": "../sandbox" }
   ]
 }
