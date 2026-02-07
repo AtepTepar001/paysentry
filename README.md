@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/npm/v/@paysentry/core?label=%40paysentry%2Fcore)](https://www.npmjs.com/package/@paysentry/core)
 [![npm](https://img.shields.io/npm/v/@paysentry/x402?label=%40paysentry%2Fx402)](https://www.npmjs.com/package/@paysentry/x402)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build](https://img.shields.io/github/actions/workflow/status/mkmkkkkk/paysentry/ci.yml?branch=main)](https://github.com/mkmkkkkk/paysentry/actions)
+[![CI](https://github.com/mkmkkkkk/paysentry/actions/workflows/ci.yml/badge.svg)](https://github.com/mkmkkkkk/paysentry/actions/workflows/ci.yml)
 
 > Your agent just authorized $500 to an API endpoint. Was that intentional?
 
