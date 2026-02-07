@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "clean": "tsc --build --clean"
   },
   "license": "MIT",

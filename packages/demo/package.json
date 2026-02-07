@@ -7,7 +7,7 @@
   },
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "start": "node dist/cli.js"
   },
   "dependencies": {
