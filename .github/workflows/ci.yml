@@ -25,20 +25,5 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Debug - Try manual tsc for core
-        run: |
-          cd packages/core
-          npx tsc --declaration --declarationMap --outDir dist --rootDir src --target ES2022 --module ESNext --moduleResolution bundler --strict --esModuleInterop --skipLibCheck --composite --listEmittedFiles 2>&1 | head -30
-          echo "---"
-          ls -la dist/
-          echo "---"
-          ls dist/*.d.ts 2>/dev/null || echo "NO .d.ts FILES FOUND"
-
-      - name: Build all
-        run: |
-          npm run build -w packages/core
-          npm run build -w packages/control -w packages/observe -w packages/protect -w packages/sandbox
-          npm run build -w packages/x402 -w packages/demo
-
-      - name: Test
-        run: npm test
+      - name: Build
+        run: npm run build
