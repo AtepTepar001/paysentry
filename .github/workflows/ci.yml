@@ -26,23 +26,19 @@ jobs:
         run: npm install
 
       - name: Build core
-        run: npm run build -w packages/core
+        run: npx tsc -p packages/core/tsconfig.json --listEmittedFiles 2>&1 | head -20
 
-      - name: Debug - Check core dist output
-        run: |
-          echo "=== core dist files ==="
-          ls -la packages/core/dist/ || echo "NO DIST DIR"
-          echo "=== node_modules symlink ==="
-          ls -la node_modules/@paysentry/core || echo "NO SYMLINK"
-          echo "=== node_modules/@paysentry/core/dist ==="
-          ls -la node_modules/@paysentry/core/dist/ || echo "NO DIST VIA SYMLINK"
-          echo "=== tsc version ==="
-          npx tsc --version
+      - name: Debug - Check core output
+        run: ls -la packages/core/dist/
 
-      - name: Build remaining packages
+      - name: Build remaining
         run: |
-          npm run build -w packages/control -w packages/observe -w packages/protect -w packages/sandbox
-          npm run build -w packages/x402 -w packages/demo
+          npx tsc -p packages/control/tsconfig.json
+          npx tsc -p packages/observe/tsconfig.json
+          npx tsc -p packages/protect/tsconfig.json
+          npx tsc -p packages/sandbox/tsconfig.json
+          npx tsc -p packages/x402/tsconfig.json
+          npx tsc -p packages/demo/tsconfig.json
 
       - name: Test
         run: npm test
