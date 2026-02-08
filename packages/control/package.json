@@ -1,6 +1,6 @@
 {
   "name": "@paysentry/control",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Declarative policy engine for AI agent payment control",
   "type": "module",
   "main": "dist/index.js",

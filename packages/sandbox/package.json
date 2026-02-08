@@ -1,6 +1,6 @@
 {
   "name": "@paysentry/sandbox",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Mock multi-protocol payment environment for testing AI agent payments",
   "type": "module",
   "main": "dist/index.js",

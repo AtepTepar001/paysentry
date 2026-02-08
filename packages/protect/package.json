@@ -1,6 +1,6 @@
 {
   "name": "@paysentry/protect",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Dispute resolution and recovery for AI agent payments",
   "type": "module",
   "main": "dist/index.js",

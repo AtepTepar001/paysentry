@@ -1,6 +1,6 @@
 {
   "name": "@paysentry/x402",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "x402 protocol adapter for PaySentry — spending limits, circuit breakers, and observability for HTTP 402 payments",
   "type": "module",
   "main": "dist/index.js",
