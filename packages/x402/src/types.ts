@@ -73,6 +73,12 @@ export interface X402PaySentryConfig {
   readonly abortOnPolicyDeny?: boolean;
 
   /**
+   * If true, internal errors in policy evaluation allow the payment to proceed.
+   * If false (default), internal errors abort the payment for safety.
+   */
+  readonly failOpen?: boolean;
+
+  /**
    * PaySentry session ID to inject into enriched responses.
    * If not set, a random session ID is generated.
    */

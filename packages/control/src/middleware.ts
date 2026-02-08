@@ -199,12 +199,12 @@ function extractDefaultTransaction(req: MiddlewareRequest): TransactionInput | n
   const protocol = body['protocol'];
 
   if (
-    typeof agentId !== 'string' ||
-    typeof recipient !== 'string' ||
-    typeof amount !== 'number' ||
-    typeof currency !== 'string' ||
-    typeof purpose !== 'string' ||
-    typeof protocol !== 'string'
+    typeof agentId !== 'string' || agentId.length === 0 ||
+    typeof recipient !== 'string' || recipient.length === 0 ||
+    typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0 ||
+    typeof currency !== 'string' || currency.length === 0 ||
+    typeof purpose !== 'string' || purpose.length === 0 ||
+    typeof protocol !== 'string' || protocol.length === 0
   ) {
     return null;
   }

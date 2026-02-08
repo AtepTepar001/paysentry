@@ -2,6 +2,7 @@
 // Shared Utilities
 // =============================================================================
 
+import { randomBytes } from 'crypto';
 import type { TransactionId, DisputeId } from './types.js';
 
 /**
@@ -13,7 +14,7 @@ import type { TransactionId, DisputeId } from './types.js';
  */
 export function generateId(prefix: string): string {
   const timestamp = Date.now().toString(16);
-  const random = Math.random().toString(36).substring(2, 10);
+  const random = randomBytes(6).toString('hex');
   return `${prefix}_${timestamp}_${random}`;
 }
 

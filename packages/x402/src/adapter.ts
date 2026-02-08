@@ -91,7 +91,7 @@ export interface PaySentryEngines {
  */
 export class PaySentryX402Adapter {
   private readonly engines: PaySentryEngines;
-  private readonly config: Required<Pick<X402PaySentryConfig, 'abortOnPolicyDeny' | 'defaultCurrency' | 'sessionId'>> & X402PaySentryConfig;
+  private readonly config: Required<Pick<X402PaySentryConfig, 'abortOnPolicyDeny' | 'defaultCurrency' | 'sessionId' | 'failOpen'>> & X402PaySentryConfig;
   private readonly circuitBreaker: CircuitBreaker;
   private readonly logger?: Logger;
 
@@ -102,6 +102,7 @@ export class PaySentryX402Adapter {
     this.engines = engines;
     this.config = {
       abortOnPolicyDeny: true,
+      failOpen: false,
       defaultCurrency: 'USDC',
       sessionId: `ps_session_${Date.now().toString(36)}`,
       ...config,
@@ -459,7 +460,9 @@ export class PaySentryX402Adapter {
       }
     } catch (error) {
       this.logger?.error('[PaySentryX402] onBeforeVerify error', error);
-      // Don't abort on internal errors — fail open
+      if (!this.config.failOpen) {
+        return { abort: true, reason: 'PaySentry internal error — payment blocked for safety' };
+      }
     }
   }
 
@@ -560,6 +563,9 @@ export class PaySentryX402Adapter {
       }
     } catch (error) {
       this.logger?.error('[PaySentryX402] onBeforeSettle error', error);
+      if (!this.config.failOpen) {
+        return { abort: true, reason: 'PaySentry internal error — settlement blocked for safety' };
+      }
     }
   }
 
